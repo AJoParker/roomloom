@@ -1,0 +1,6 @@
+@RoomLoom_HostAddress = http://localhost:5150
+
+GET {{RoomLoom_HostAddress}}/test/
+Accept: application/json
+
+###
