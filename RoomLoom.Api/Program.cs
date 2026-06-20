@@ -1,27 +1,37 @@
+using Microsoft.EntityFrameworkCore;
 using RoomLoom.Api.BackgroundServices;
+using RoomLoom.Api.Hubs;
+using RoomLoom.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR(o => o.EnableDetailedErrors = builder.Environment.IsDevelopment());
+
+builder.Services.AddDbContext<RoomLoomDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("RoomLoomDb")));
+
+builder.Services.AddScoped<ISchedulingProvider, InMemorySchedulingProvider>();
+
 builder.Services.AddHostedService<SessionExpiryService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.MapGet("/test", () =>
+app.MapGet("/test", (ISchedulingProvider scheduling) =>
 {
     Console.WriteLine("Test endpoint called");
-    ISchedulingProvider schedulingProvider = new InMemorySchedulingProvider();
-    return schedulingProvider.GetUpcomingSessionsAsync("test-user");
+    return scheduling.GetUpcomingSessionsAsync("test-user");
 });
+
+app.MapHub<SessionHub>("/hubs/session");
 
 app.UseHttpsRedirection();
 
 app.Run();
+
+public partial class Program;
