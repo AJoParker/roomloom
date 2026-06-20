@@ -2,4 +2,5 @@
   <Project Path="RoomLoom.Api/RoomLoom.Api.csproj" />
   <Project Path="RoomLoom.Core/RoomLoom.Core.csproj" />
   <Project Path="RoomLoom.Infrastructure/RoomLoom.Infrastructure.csproj" />
+  <Project Path="tests/RoomLoom.Api.Tests/RoomLoom.Api.Tests.csproj" />
 </Solution>
