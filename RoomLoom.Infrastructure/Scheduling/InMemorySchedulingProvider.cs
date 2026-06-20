@@ -52,5 +52,17 @@ public class InMemorySchedulingProvider : ISchedulingProvider
         Console.WriteLine("InMemorySchedulingProvider.CancelSessionAsync called");
         Console.WriteLine($"SessionId: {sessionId}");
         return Task.CompletedTask;
-    }   
+    }
+
+    public Task MarkSessionLiveAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"InMemorySchedulingProvider.MarkSessionLiveAsync called for {sessionId}");
+        return Task.CompletedTask;
+    }
+
+    public Task MarkSessionEndedAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"InMemorySchedulingProvider.MarkSessionEndedAsync called for {sessionId}");
+        return Task.CompletedTask;
+    }
 }

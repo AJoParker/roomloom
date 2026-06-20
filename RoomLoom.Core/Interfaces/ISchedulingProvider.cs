@@ -11,4 +11,10 @@ public interface ISchedulingProvider
 
     //<summary>Cancels a scheduled session.</summary>
     Task CancelSessionAsync(string sessionId, CancellationToken cancellationToken = default);
+
+    //<summary>Marks a scheduled session as Live (called when the session goes live).</summary>
+    Task MarkSessionLiveAsync(string sessionId, CancellationToken cancellationToken = default);
+
+    //<summary>Marks a scheduled session as Ended (called when the live session terminates).</summary>
+    Task MarkSessionEndedAsync(string sessionId, CancellationToken cancellationToken = default);
 }
