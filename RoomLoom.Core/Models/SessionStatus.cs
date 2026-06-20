@@ -3,5 +3,7 @@ public enum SessionStatus
     Scheduled,
     Waiting,
     Live,
-    Ended
+    Ended,
+    Cancelled,
+    Expired
 }

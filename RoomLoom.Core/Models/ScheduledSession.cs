@@ -7,5 +7,6 @@ public record ScheduledSession
     public DateTimeOffset EndTime { get; set; }
     public Participant Host { get; set; } = null!;
     public List<Participant> Participants { get; set; } = new();
+    public SessionStatus PlannedStatus { get; set; } = SessionStatus.Scheduled;
     public string JoinUrl { get; set; } = string.Empty;
 }

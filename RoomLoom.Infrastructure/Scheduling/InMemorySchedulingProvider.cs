@@ -52,5 +52,5 @@ public class InMemorySchedulingProvider : ISchedulingProvider
         Console.WriteLine("InMemorySchedulingProvider.CancelSessionAsync called");
         Console.WriteLine($"SessionId: {sessionId}");
         return Task.CompletedTask;
-    }
+    }   
 }
