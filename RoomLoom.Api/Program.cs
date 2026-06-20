@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RoomLoom.Api.BackgroundServices;
 using RoomLoom.Api.Hubs;
+using RoomLoom.Api.Services;
 using RoomLoom.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,7 @@ builder.Services.AddDbContext<RoomLoomDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("RoomLoomDb")));
 
 builder.Services.AddScoped<ISchedulingProvider, InMemorySchedulingProvider>();
+builder.Services.AddSingleton<ILiveSessionService, LiveSessionService>();
 
 builder.Services.AddHostedService<SessionExpiryService>();
 

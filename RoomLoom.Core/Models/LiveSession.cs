@@ -4,5 +4,6 @@ public record LiveSession
     public string ScheduledSessionId { get; set; } = string.Empty;
     public DateTimeOffset StartedTime { get; set; }
     public DateTimeOffset? EndedTime { get; set; }
+    public string MediaRoomId { get; set; } = string.Empty;
     public SessionStatus RuntimeStatus { get; set; } = SessionStatus.Scheduled;
 }
