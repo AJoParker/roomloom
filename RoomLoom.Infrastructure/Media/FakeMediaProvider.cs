@@ -1,3 +1,5 @@
+using RoomLoom.Core.Interfaces;
+
 namespace RoomLoom.Infrastructure.Media;
 
 public class FakeMediaProvider : IMediaProvider

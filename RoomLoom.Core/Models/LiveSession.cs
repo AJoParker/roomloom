@@ -1,4 +1,6 @@
-public record LiveSession
+namespace RoomLoom.Core.Models;
+
+public class LiveSession
 {
     public string Id { get; set; } = string.Empty;
     public string ScheduledSessionId { get; set; } = string.Empty;

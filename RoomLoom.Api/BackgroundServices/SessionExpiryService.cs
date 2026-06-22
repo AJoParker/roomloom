@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using RoomLoom.Core.Models;
 using RoomLoom.Infrastructure.Persistence;
 
 namespace RoomLoom.Api.BackgroundServices;
@@ -7,14 +9,16 @@ public class SessionExpiryService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SessionExpiryService> _logger;
-    private readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _interval;
 
     public SessionExpiryService(
         IServiceScopeFactory scopeFactory,
-        ILogger<SessionExpiryService> logger)
+        ILogger<SessionExpiryService> logger,
+        IOptions<SessionExpiryOptions> options)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _interval = options.Value.Interval;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

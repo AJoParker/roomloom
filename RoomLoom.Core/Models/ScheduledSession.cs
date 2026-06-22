@@ -1,4 +1,6 @@
-public record ScheduledSession
+namespace RoomLoom.Core.Models;
+
+public class ScheduledSession
 {
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
@@ -8,5 +10,4 @@ public record ScheduledSession
     public Participant Host { get; set; } = null!;
     public List<Participant> Participants { get; set; } = new();
     public SessionStatus PlannedStatus { get; set; } = SessionStatus.Scheduled;
-    public string JoinUrl { get; set; } = string.Empty;
 }

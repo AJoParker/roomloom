@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
+using RoomLoom.Core.Interfaces;
+using RoomLoom.Core.Models;
 
 namespace RoomLoom.Api.Hubs;
 
@@ -8,9 +10,12 @@ public class SessionHub(ILiveSessionService liveSessions) : Hub
 
     public async Task JoinSession(string sessionId, Participant participant)
     {
-        _liveSessions.RegisterPresence(Context.ConnectionId, sessionId, participant);
+        var isNew = _liveSessions.RegisterPresence(Context.ConnectionId, sessionId, participant);
         await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
-        await Clients.Group(sessionId).SendAsync("ParticipantJoined", participant);
+        if (isNew)
+        {
+            await Clients.Group(sessionId).SendAsync("ParticipantJoined", participant);
+        }
     }
 
     public IReadOnlyList<Participant> GetParticipants(string sessionId)

@@ -1,3 +1,5 @@
+namespace RoomLoom.Core.Models;
+
 public enum SessionStatus
 {
     Scheduled,

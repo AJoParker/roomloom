@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+using RoomLoom.Core.Models;
 
 namespace RoomLoom.Api.Tests;
 
@@ -28,8 +29,8 @@ public class SessionHubTests
     {
         await using var factory = new TestWebAppFactory();
         var sessionId = Guid.NewGuid().ToString();
-        var alice = new Participant { Id = 1, Name = "Alice", Email = "alice@example.com" };
-        var bob = new Participant { Id = 2, Name = "Bob", Email = "bob@example.com" };
+        var alice = new Participant { Id = "alice", Name = "Alice", Email = "alice@example.com" };
+        var bob = new Participant { Id = "bob", Name = "Bob", Email = "bob@example.com" };
 
         var aliceReceived = new TaskCompletionSource<string>();
         await using var aliceConn = BuildHubClient(factory);
@@ -53,8 +54,8 @@ public class SessionHubTests
     {
         await using var factory = new TestWebAppFactory();
         var sessionId = Guid.NewGuid().ToString();
-        var alice = new Participant { Id = 1, Name = "Alice", Email = "alice@example.com" };
-        var bob = new Participant { Id = 2, Name = "Bob", Email = "bob@example.com" };
+        var alice = new Participant { Id = "alice", Name = "Alice", Email = "alice@example.com" };
+        var bob = new Participant { Id = "bob", Name = "Bob", Email = "bob@example.com" };
 
         var leftSeen = new TaskCompletionSource<Participant>();
         await using var aliceConn = BuildHubClient(factory);
@@ -81,11 +82,36 @@ public class SessionHubTests
     }
 
     [Fact]
+    public async Task JoinSession_Twice_BroadcastsParticipantJoinedOnce()
+    {
+        await using var factory = new TestWebAppFactory();
+        var sessionId = Guid.NewGuid().ToString();
+        var alice = new Participant { Id = "alice", Name = "Alice", Email = "alice@example.com" };
+        var bob = new Participant { Id = "bob", Name = "Bob", Email = "bob@example.com" };
+
+        var joinCount = 0;
+        await using var observer = BuildHubClient(factory);
+        observer.On<Participant>("ParticipantJoined", _ => Interlocked.Increment(ref joinCount));
+        await observer.StartAsync();
+        await observer.InvokeAsync("JoinSession", sessionId, alice);
+
+        await using var duplicate = BuildHubClient(factory);
+        await duplicate.StartAsync();
+        await duplicate.InvokeAsync("JoinSession", sessionId, bob);
+        await duplicate.InvokeAsync("JoinSession", sessionId, bob);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(300));
+
+        // Two genuine joins (alice, bob's first) plus zero from bob's duplicate = 2.
+        Assert.Equal(2, joinCount);
+    }
+
+    [Fact]
     public async Task GoLive_CreatesLiveSessionAndNotifies()
     {
         await using var factory = new TestWebAppFactory();
         var sessionId = Guid.NewGuid().ToString();
-        var alice = new Participant { Id = 1, Name = "Alice", Email = "alice@example.com" };
+        var alice = new Participant { Id = "alice", Name = "Alice", Email = "alice@example.com" };
 
         var liveSeen = new TaskCompletionSource<LiveSession>();
         await using var aliceConn = BuildHubClient(factory);
@@ -109,5 +135,41 @@ public class SessionHubTests
         endResp.EnsureSuccessStatusCode();
         Assert.Single(factory.Media.EndedRoomIds);
         Assert.Equal(live.MediaRoomId, factory.Media.EndedRoomIds.First());
+    }
+
+    [Fact]
+    public async Task EndSession_BroadcastsLiveSessionWithEndedTimestamp()
+    {
+        await using var factory = new TestWebAppFactory();
+        var sessionId = Guid.NewGuid().ToString();
+        var alice = new Participant { Id = "alice", Name = "Alice", Email = "alice@example.com" };
+
+        var liveSeen = new TaskCompletionSource<LiveSession>();
+        var endedSeen = new TaskCompletionSource<LiveSession>();
+        await using var aliceConn = BuildHubClient(factory);
+        aliceConn.On<LiveSession>("SessionLive", l => liveSeen.TrySetResult(l));
+        aliceConn.On<LiveSession>("SessionEnded", l => endedSeen.TrySetResult(l));
+        await aliceConn.StartAsync();
+        await aliceConn.InvokeAsync("JoinSession", sessionId, alice);
+
+        using var http = factory.CreateClient();
+        var goLiveResp = await http.PostAsync($"/sessions/{sessionId}/go-live", content: null);
+        goLiveResp.EnsureSuccessStatusCode();
+
+        var liveWinner = await Task.WhenAny(liveSeen.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.Same(liveSeen.Task, liveWinner);
+        var live = await liveSeen.Task;
+
+        var beforeEnd = DateTimeOffset.UtcNow;
+        var endResp = await http.PostAsync($"/live-sessions/{live.Id}/end", content: null);
+        endResp.EnsureSuccessStatusCode();
+
+        var endedWinner = await Task.WhenAny(endedSeen.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.Same(endedSeen.Task, endedWinner);
+        var ended = await endedSeen.Task;
+        Assert.Equal(live.Id, ended.Id);
+        Assert.Equal(SessionStatus.Ended, ended.RuntimeStatus);
+        Assert.NotNull(ended.EndedTime);
+        Assert.True(ended.EndedTime >= beforeEnd, $"EndedTime {ended.EndedTime} should be >= {beforeEnd}");
     }
 }

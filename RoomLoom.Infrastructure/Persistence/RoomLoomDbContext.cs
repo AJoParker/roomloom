@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoomLoom.Core.Models;
 
 namespace RoomLoom.Infrastructure.Persistence;
 
@@ -17,11 +18,22 @@ public class RoomLoomDbContext : DbContext
             session.HasKey(s => s.Id);
 
             session.Property(s => s.Id)
-                   .ValueGeneratedNever();
+                   .ValueGeneratedNever()
+                   .HasMaxLength(36);
 
             session.Property(s => s.Title)
                    .IsRequired()
                    .HasMaxLength(200);
+
+            session.Property(s => s.Description)
+                   .IsRequired()
+                   .HasMaxLength(2000);
+
+            session.Property(s => s.StartTime)
+                   .IsRequired();
+
+            session.Property(s => s.EndTime)
+                   .IsRequired();
 
             session.Property(s => s.PlannedStatus)
                    .HasConversion<string>()
@@ -41,11 +53,16 @@ public class RoomLoomDbContext : DbContext
             participant.HasKey(p => p.Id);
 
             participant.Property(p => p.Id)
-                       .ValueGeneratedNever();
+                       .ValueGeneratedNever()
+                       .HasMaxLength(36);
 
             participant.Property(p => p.Name)
                        .IsRequired()
                        .HasMaxLength(150);
+
+            participant.Property(p => p.Email)
+                       .IsRequired()
+                       .HasMaxLength(254);
         });
     }
 }

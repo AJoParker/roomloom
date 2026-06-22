@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using RoomLoom.Core.Interfaces;
 
 namespace RoomLoom.Api.Tests;
 

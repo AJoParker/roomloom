@@ -21,14 +21,14 @@ RoomLoom.Api             // controllers, hosted services, composition root. Refe
 ```
 
 - **Core** owns the vocabulary. Models (`ScheduledSession`, `LiveSession`, `Participant`) and contracts (`ISchedulingProvider`, `IMediaProvider`). It depends on nothing, by design, and the project references enforce that at compile time. It is also persistence-ignorant: no EF Core reference, no data annotations, nothing about how it gets stored.
-- **Infrastructure** keeps the promises. The EF Core `DbContext`, the SQL Server persistence, and the provider implementations live here. Today: `EfSchedulingProvider` (real, SQL-backed), `InMemorySchedulingProvider` (kept for tests and fast local runs), and `FakeMediaProvider`. Later: real calendar adapters and a LiveKit media provider.
+- **Infrastructure** keeps the promises. The EF Core `DbContext`, the SQL Server persistence wiring, and the provider implementations live here. Today: `InMemorySchedulingProvider` (the stub that proves the socket) and `FakeMediaProvider`. `RoomLoomDbContext` is already wired so an `EfSchedulingProvider` can drop in as the second plug without touching the core. Later: real calendar adapters and a LiveKit media provider.
 - **Api** is the composition root. It reads configuration, wires implementations to contracts via dependency injection, hosts the background service, and exposes the HTTP and real-time surface.
 
 The dependency direction is the whole architecture. Core cannot name an Infrastructure type, so it cannot couple to a provider or to EF Core. This is dependency inversion (the arrow points inward) and ports and adapters (Core defines the sockets, Infrastructure supplies the plugs).
 
 ### Persistence
 
-Scheduled sessions are persisted to SQL Server via EF Core. The mapping is configured entirely with the Fluent API inside the `DbContext`, which keeps EF concerns out of the Core models. The `LiveSession` model is deliberately not persisted: it is runtime state that should not survive a restart, so it lives in memory and is owned by the real-time layer.
+Scheduled sessions will persist to SQL Server via EF Core. The mapping is configured entirely with the Fluent API inside `RoomLoomDbContext`, which keeps EF concerns out of the Core models. The context is ready; the EF-backed scheduling provider that uses it is the next plug to write. The `LiveSession` model is deliberately not persisted: it is runtime state that should not survive a restart, so it lives in memory and is owned by the real-time layer.
 
 Each `ScheduledSession` carries a planned-status lifecycle: `Scheduled`, `Live`, `Cancelled`, `Expired`. This is distinct from a live session's runtime status. The plan's status describes the booking; the runtime status describes a meeting actually in progress. They touch only at "Live."
 
@@ -36,44 +36,62 @@ Each `ScheduledSession` carries a planned-status lifecycle: `Scheduled`, `Live`,
 
 A hosted `BackgroundService` sweeps on a timer and marks lapsed sessions (still `Scheduled`, end time past) as `Expired`. It uses the scope-factory pattern: the service is a singleton, so it creates a fresh DI scope and a fresh `DbContext` on each tick rather than capturing a scoped context for the app lifetime. The sweep is an atomic `ExecuteUpdateAsync`, which avoids loading rows just to update them and closes the race between a session going live and the sweep marking it expired.
 
+### Real-time layer
+
+SignalR provides the real-time surface. `SessionHub` is intentionally thin: it is created per invocation and holds no fields. The durable runtime state lives in `LiveSessionService`, a singleton owned by the Api layer, with `ConcurrentDictionary`-backed presence keyed by SignalR connection id. SignalR groups (one per session) are the routing primitive; the hub never tracks connection ids itself, and presence is auto-cleaned when a connection drops via an `OnDisconnectedAsync` override.
+
+Lifecycle (go-live and end) is orchestrated by `SessionService` in Infrastructure, which depends only on Core ports: `ISchedulingProvider` for the plan, `IMediaProvider` for the room, `ILiveSessionService` for the runtime object, and `ISessionNotifier` for broadcasts. The Api supplies `SignalRSessionNotifier`, the only adapter that knows about `IHubContext<SessionHub>`. Orchestration stays free of SignalR; the hub stays free of scheduling and media.
+
+#### Scaling
+
+This is a single-instance design today. Group membership and the presence dictionaries live in process memory, so running multiple Api instances behind a load balancer would shard presence and miss broadcasts across instances. The known scale-out path is a SignalR backplane (Redis) or Azure SignalR Service, both of which are drop-in. Not built yet; documented as the path when horizontal scale is needed.
+
 ## Current state
 
 Early build, active development. Working today:
 
 - Three-project structure with enforced dependency direction.
 - Domain models and provider interfaces in Core.
-- EF Core persistence on SQL Server, with Fluent API mapping and migrations.
-- In-memory and SQL-backed scheduling providers, both satisfying the same contract.
+- EF Core persistence wiring for SQL Server, with Fluent API mapping in `RoomLoomDbContext`. Migrations land alongside the first EF-backed provider.
+- `InMemorySchedulingProvider` satisfying `ISchedulingProvider`. An EF-backed provider is the next plug.
 - Fake media provider behind `IMediaProvider`.
 - Background service that expires lapsed sessions.
+- SignalR hub with presence (join, leave on disconnect, who-is-here query).
+- Session orchestration (`ISessionService`) for go-live and end, with broadcasts through an `ISessionNotifier` port.
+- Integration tests using `WebApplicationFactory` and a real SignalR client over the in-memory test server.
 
 ## Roadmap
 
-- SignalR hub for presence, join/leave, and session lifecycle events.
-- Session orchestration service: take a `ScheduledSession` live, create the `LiveSession`, request a media room, track runtime state.
+- `EfSchedulingProvider`: the SQL-backed implementation of `ISchedulingProvider`, registered alongside or in place of the in-memory provider. Ships with the first migration.
 - Real adapters: a LiveKit media provider and at least one real calendar provider.
-- MAUI client that talks only to the RoomLoom API, never to providers directly.
+- Auth on the hub and HTTP endpoints.
+- MAUI client that talks only to the RoomLoom API, never to providers directly. Will use `WithAutomaticReconnect()` on the SignalR connection.
 - Long-term: a native .NET media layer to replace the LiveKit dependency. This is where the hard part lives (SFU, WebRTC negotiation, congestion control), so it is a deliberate long-term direction, not a near-term claim.
 
 ## Setup
 
-Requires .NET 10 and a running SQL Server instance. On Apple Silicon, SQL Server 2022 under Docker Desktop with Rosetta is the tested path.
+Requires .NET 10. The live scheduling registration today is `InMemorySchedulingProvider`, so the app runs with no database. SQL Server is required only to exercise the EF Core persistence wiring (and will be required once `EfSchedulingProvider` lands). On Apple Silicon, SQL Server 2022 under Docker Desktop with Rosetta is the tested path.
+
+1. Run:
+   ```
+   dotnet run --project RoomLoom.Api
+   ```
+
+To exercise the SQL Server persistence wiring:
 
 1. Start SQL Server (Docker). Set a strong `SA` password.
 2. Put the connection string in user-secrets on the Api project (it is not committed):
    ```
    dotnet user-secrets set "ConnectionStrings:RoomLoomDb" "Server=localhost,1433;Database=RoomLoom;User Id=sa;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
    ```
-3. Apply migrations:
+3. Create and apply the initial migration (none are committed yet):
    ```
+   dotnet ef migrations add Initial --project RoomLoom.Infrastructure --startup-project RoomLoom.Api
    dotnet ef database update --project RoomLoom.Infrastructure --startup-project RoomLoom.Api
    ```
-4. Run:
-   ```
-   dotnet run --project RoomLoom.Api
-   ```
+4. Run as above.
 
-For a database-free run (no SQL Server, no Docker), the in-memory scheduling provider can be registered instead of the EF one. The fake and real providers satisfy the same `ISchedulingProvider` contract, so the swap is a single registration line. That is the architecture point, not a workaround.
+Swapping the in-memory provider for an EF-backed one (once it exists) is a single registration line in `Program.cs`. The fake and real providers satisfy the same `ISchedulingProvider` contract, so the swap is one line. That is the architecture point, not a workaround.
 
 ## Stack
 

@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using RoomLoom.Core.Interfaces;
+using RoomLoom.Core.Models;
 
 namespace RoomLoom.Api.Services;
 
@@ -28,11 +30,18 @@ public class LiveSessionService : ILiveSessionService
     public void Remove(string liveSessionId)
         => _liveSessions.TryRemove(liveSessionId, out _);
 
-    public void RegisterPresence(string connectionId, string sessionId, Participant participant)
+    public bool RegisterPresence(string connectionId, string sessionId, Participant participant)
     {
+        if (_presenceByConnection.TryGetValue(connectionId, out var existing)
+            && existing.SessionId == sessionId)
+        {
+            return false;
+        }
+
         _presenceByConnection[connectionId] = (sessionId, participant);
         var bucket = _participantsBySession.GetOrAdd(sessionId, _ => new ConcurrentDictionary<string, Participant>());
         bucket[connectionId] = participant;
+        return true;
     }
 
     public (string? SessionId, Participant? Participant) RemovePresence(string connectionId)
@@ -43,8 +52,6 @@ public class LiveSessionService : ILiveSessionService
         if (_participantsBySession.TryGetValue(entry.SessionId, out var bucket))
         {
             bucket.TryRemove(connectionId, out _);
-            if (bucket.IsEmpty)
-                _participantsBySession.TryRemove(entry.SessionId, out _);
         }
 
         return (entry.SessionId, entry.Participant);

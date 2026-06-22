@@ -1,3 +1,5 @@
+namespace RoomLoom.Core.Interfaces;
+
 public interface IMediaProvider
 {
     Task<string> CreateRoomAsync(string roomName, CancellationToken cancellationToken = default);
