@@ -82,6 +82,38 @@ public class SessionHubTests
     }
 
     [Fact]
+    public async Task LeaveSession_RemovesPresence_BroadcastsParticipantLeft()
+    {
+        await using var factory = new TestWebAppFactory();
+        var sessionId = Guid.NewGuid().ToString();
+        var alice = new Participant { Id = "alice", Name = "Alice", Email = "alice@example.com" };
+        var bob = new Participant { Id = "bob", Name = "Bob", Email = "bob@example.com" };
+
+        var leftSeen = new TaskCompletionSource<Participant>();
+        await using var aliceConn = BuildHubClient(factory);
+        aliceConn.On<Participant>("ParticipantLeft", p => leftSeen.TrySetResult(p));
+        await aliceConn.StartAsync();
+        await aliceConn.InvokeAsync("JoinSession", sessionId, alice);
+
+        await using var bobConn = BuildHubClient(factory);
+        await bobConn.StartAsync();
+        await bobConn.InvokeAsync("JoinSession", sessionId, bob);
+
+        var beforeCount = (await aliceConn.InvokeAsync<List<Participant>>("GetParticipants", sessionId)).Count;
+        Assert.Equal(2, beforeCount);
+
+        await bobConn.InvokeAsync("LeaveSession", sessionId);
+
+        var winner = await Task.WhenAny(leftSeen.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.Same(leftSeen.Task, winner);
+        var leftParticipant = await leftSeen.Task;
+        Assert.Equal(bob.Name, leftParticipant.Name);
+
+        var afterCount = (await aliceConn.InvokeAsync<List<Participant>>("GetParticipants", sessionId)).Count;
+        Assert.Equal(1, afterCount);
+    }
+
+    [Fact]
     public async Task JoinSession_Twice_BroadcastsParticipantJoinedOnce()
     {
         await using var factory = new TestWebAppFactory();

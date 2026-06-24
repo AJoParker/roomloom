@@ -1,4 +1,7 @@
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +22,26 @@ public class SessionEndpointsTests
         var response = await http.PostAsync("/live-sessions/does-not-exist/end", content: null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetSessions_ReturnsUpcomingFromProvider()
+    {
+        await using var factory = new TestWebAppFactory();
+        using var http = factory.CreateClient();
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() },
+        };
+
+        var sessions = await http.GetFromJsonAsync<List<ScheduledSession>>("/sessions", jsonOptions);
+
+        Assert.NotNull(sessions);
+        Assert.Equal(2, sessions!.Count);
+        Assert.Contains(sessions, s => s.Id == "session-1");
+        Assert.Contains(sessions, s => s.Id == "session-2");
+        Assert.All(sessions, s => Assert.Equal(SessionStatus.Scheduled, s.PlannedStatus));
     }
 
     [Fact]

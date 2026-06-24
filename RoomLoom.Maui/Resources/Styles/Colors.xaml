@@ -41,4 +41,10 @@
     <SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}"/>
     <SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}"/>
     <SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}"/>
+
+    <!-- RoomLoom status palette -->
+    <Color x:Key="StatusScheduled">#666666</Color>
+    <Color x:Key="StatusLive">#2E8B57</Color>
+    <Color x:Key="StatusEnded">#D2691E</Color>
+    <Color x:Key="StatusError">#C62828</Color>
 </ResourceDictionary>

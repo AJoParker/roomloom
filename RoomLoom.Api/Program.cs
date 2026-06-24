@@ -50,6 +50,15 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.MapGet("/sessions", async (
+    ISchedulingProvider scheduling,
+    CancellationToken ct,
+    string? userId = null) =>
+{
+    var sessions = await scheduling.GetUpcomingSessionsAsync(userId ?? "dev-user", ct);
+    return Results.Ok(sessions);
+});
+
 app.MapPost("/sessions/{id}/go-live", async (string id, ISessionService sessions, CancellationToken ct) =>
 {
     try

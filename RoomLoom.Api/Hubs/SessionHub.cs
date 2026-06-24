@@ -18,6 +18,16 @@ public class SessionHub(ILiveSessionService liveSessions) : Hub
         }
     }
 
+    public async Task LeaveSession(string sessionId)
+    {
+        var (removedSessionId, participant) = _liveSessions.RemovePresence(Context.ConnectionId);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, sessionId);
+        if (removedSessionId is not null && participant is not null)
+        {
+            await Clients.Group(removedSessionId).SendAsync("ParticipantLeft", participant);
+        }
+    }
+
     public IReadOnlyList<Participant> GetParticipants(string sessionId)
         => _liveSessions.GetParticipants(sessionId);
 

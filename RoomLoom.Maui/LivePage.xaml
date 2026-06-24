@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:RoomLoom.Maui.Models"
+             xmlns:vm="clr-namespace:RoomLoom.Maui.ViewModels"
+             x:Class="RoomLoom.Maui.LivePage"
+             x:DataType="vm:LiveSessionViewModel"
+             Title="Live">
+
+    <Grid Padding="20" RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="10">
+
+        <Label Grid.Row="0"
+               Style="{StaticResource Headline}">
+            <Label.Text>
+                <MultiBinding StringFormat="Session: {0}">
+                    <Binding Path="SessionId" />
+                </MultiBinding>
+            </Label.Text>
+        </Label>
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="10">
+            <Label Text="Connection:" VerticalOptions="Center" />
+            <Label Text="{Binding ConnectionState}" Style="{StaticResource StatusBadge}" />
+        </HorizontalStackLayout>
+
+        <HorizontalStackLayout Grid.Row="2" Spacing="10">
+            <Label Text="Lifecycle:" VerticalOptions="Center" />
+            <Label Text="{Binding LifecycleText}" Style="{StaticResource StatusBadge}">
+                <Label.Triggers>
+                    <DataTrigger TargetType="Label" Binding="{Binding Lifecycle}" Value="Live">
+                        <Setter Property="BackgroundColor" Value="{StaticResource StatusLive}" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Label" Binding="{Binding Lifecycle}" Value="Ended">
+                        <Setter Property="BackgroundColor" Value="{StaticResource StatusEnded}" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Label" Binding="{Binding Lifecycle}" Value="Error">
+                        <Setter Property="BackgroundColor" Value="{StaticResource StatusError}" />
+                    </DataTrigger>
+                </Label.Triggers>
+            </Label>
+        </HorizontalStackLayout>
+
+        <Button Grid.Row="3"
+                Text="Go Live"
+                Command="{Binding GoLiveCommand}"
+                HorizontalOptions="Start" />
+
+        <Grid Grid.Row="4">
+
+            <!-- Loading -->
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" IsVisible="False">
+                <VerticalStackLayout.Triggers>
+                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding State}" Value="Loading">
+                        <Setter Property="IsVisible" Value="True" />
+                    </DataTrigger>
+                </VerticalStackLayout.Triggers>
+                <ActivityIndicator IsRunning="True" />
+                <Label Text="Joining session..." HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <!-- Empty -->
+            <Label Text="No participants yet."
+                   HorizontalOptions="Center" VerticalOptions="Center"
+                   IsVisible="False">
+                <Label.Triggers>
+                    <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Empty">
+                        <Setter Property="IsVisible" Value="True" />
+                    </DataTrigger>
+                </Label.Triggers>
+            </Label>
+
+            <!-- Error -->
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="6" IsVisible="False">
+                <VerticalStackLayout.Triggers>
+                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding State}" Value="Error">
+                        <Setter Property="IsVisible" Value="True" />
+                    </DataTrigger>
+                </VerticalStackLayout.Triggers>
+                <Label Text="Couldn't join session" FontAttributes="Bold" TextColor="{StaticResource StatusError}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding ErrorMessage}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <!-- Loaded -->
+            <CollectionView ItemsSource="{Binding Participants}" IsVisible="False">
+                <CollectionView.Triggers>
+                    <DataTrigger TargetType="CollectionView" Binding="{Binding State}" Value="Loaded">
+                        <Setter Property="IsVisible" Value="True" />
+                    </DataTrigger>
+                </CollectionView.Triggers>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Participant">
+                        <Border Style="{StaticResource Card}">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                <Label Text="{Binding Id}" TextColor="Gray" FontSize="12" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </Grid>
+
+    </Grid>
+
+</ContentPage>
