@@ -93,6 +93,24 @@ To exercise the SQL Server persistence wiring:
 
 Swapping the in-memory provider for an EF-backed one (once it exists) is a single registration line in `Program.cs`. The fake and real providers satisfy the same `ISchedulingProvider` contract, so the swap is one line. That is the architecture point, not a workaround.
 
+### Streaming (LiveKit)
+
+`FakeMediaProvider` is the default and needs no infrastructure. To exercise the real `LiveKitMediaProvider`, run the bundled LiveKit dev server in Docker and put the dev credentials in user-secrets:
+
+```
+docker compose up -d livekit
+dotnet user-secrets set "LiveKit:Url" "ws://localhost:7880" --project RoomLoom.Api
+dotnet user-secrets set "LiveKit:ApiKey" "devkey" --project RoomLoom.Api
+dotnet user-secrets set "LiveKit:Secret" "secret" --project RoomLoom.Api
+```
+
+With those secrets present, the Api registers `LiveKitMediaProvider` automatically and `GET /live-sessions/{id}/token?participantId=...` returns a real signed JWT. Without them, the Api falls back to `FakeMediaProvider`.
+
+Optional smoke test of the SFU itself (requires the LiveKit CLI):
+```
+lk room join roomtest --identity demo --publish-demo --url ws://localhost:7880 --api-key devkey --api-secret secret
+```
+
 ## Stack
 
 - ASP.NET Core (.NET 10)

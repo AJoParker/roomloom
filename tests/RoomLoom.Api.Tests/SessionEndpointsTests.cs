@@ -45,6 +45,45 @@ public class SessionEndpointsTests
     }
 
     [Fact]
+    public async Task GetToken_ReturnsUrlAndTokenForLiveSession()
+    {
+        await using var factory = new TestWebAppFactory();
+        using var http = factory.CreateClient();
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() },
+        };
+
+        var goLive = await http.PostAsync("/sessions/session-1/go-live", content: null);
+        goLive.EnsureSuccessStatusCode();
+        var live = await goLive.Content.ReadFromJsonAsync<LiveSession>(jsonOptions);
+        Assert.NotNull(live);
+
+        var tokenResp = await http.GetAsync($"/live-sessions/{live!.Id}/token?participantId=alice");
+        tokenResp.EnsureSuccessStatusCode();
+        var payload = await tokenResp.Content.ReadFromJsonAsync<TokenResponse>();
+
+        Assert.NotNull(payload);
+        Assert.NotNull(payload!.Token);
+        Assert.NotEmpty(payload.Token);
+        Assert.NotNull(payload.Url);
+    }
+
+    [Fact]
+    public async Task GetToken_ReturnsNotFound_ForUnknownLiveSession()
+    {
+        await using var factory = new TestWebAppFactory();
+        using var http = factory.CreateClient();
+
+        var response = await http.GetAsync("/live-sessions/does-not-exist/token?participantId=alice");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private sealed record TokenResponse(string Url, string Token);
+
+    [Fact]
     public async Task UnhandledException_Returns500_WithProblemDetailsBody()
     {
         await using var baseFactory = new TestWebAppFactory();

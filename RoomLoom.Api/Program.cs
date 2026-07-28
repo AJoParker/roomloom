@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RoomLoom.Api.BackgroundServices;
 using RoomLoom.Api.Hubs;
 using RoomLoom.Api.Notifications;
@@ -33,7 +34,18 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddScoped<ISchedulingProvider, InMemorySchedulingProvider>();
-builder.Services.AddSingleton<IMediaProvider, FakeMediaProvider>();
+
+var liveKitSection = builder.Configuration.GetSection("LiveKit");
+builder.Services.Configure<LiveKitOptions>(liveKitSection);
+if (!string.IsNullOrWhiteSpace(liveKitSection["Url"]))
+{
+    builder.Services.AddSingleton<IMediaProvider, LiveKitMediaProvider>();
+}
+else
+{
+    builder.Services.AddSingleton<IMediaProvider, FakeMediaProvider>();
+}
+
 builder.Services.AddSingleton<ILiveSessionService, LiveSessionService>();
 builder.Services.AddSingleton<ISessionNotifier, SignalRSessionNotifier>();
 builder.Services.AddScoped<ISessionService, SessionService>();
@@ -74,6 +86,22 @@ app.MapPost("/sessions/{id}/go-live", async (string id, ISessionService sessions
     {
         return Results.Conflict(new { error = ex.Message });
     }
+});
+
+app.MapGet("/live-sessions/{id}/token", async (
+    string id,
+    IMediaProvider media,
+    ILiveSessionService liveSessions,
+    IOptions<LiveKitOptions> liveKitOpts,
+    CancellationToken ct,
+    string? participantId = null) =>
+{
+    var live = liveSessions.Get(id);
+    if (live is null)
+        return Results.NotFound(new { error = $"Live session '{id}' not found." });
+
+    var token = await media.GenerateJoinTokenAsync(live.MediaRoomId, participantId ?? "anonymous", ct);
+    return Results.Ok(new { url = liveKitOpts.Value.Url, token });
 });
 
 app.MapPost("/live-sessions/{id}/end", async (string id, ISessionService sessions, CancellationToken ct) =>
