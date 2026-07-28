@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RoomLoom Stream</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #111;
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 8px;
+            padding: 8px;
+            box-sizing: border-box;
+            height: 100%;
+        }
+        .tile {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+        }
+        .tile video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .label {
+            position: absolute;
+            left: 8px;
+            bottom: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        #status {
+            position: fixed;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="grid"></div>
+    <div id="status">Idle</div>
+    <script src="livekit-client.umd.js"></script>
+    <script>
+        let room = null;
+        const tiles = new Map(); // trackSid -> tile element
+
+        function postMessage(payload) {
+            try {
+                if (window.HybridWebView && window.HybridWebView.SendRawMessage) {
+                    window.HybridWebView.SendRawMessage(JSON.stringify(payload));
+                }
+            } catch (e) { /* ignore bridge errors */ }
+        }
+
+        function setStatus(text) {
+            document.getElementById("status").textContent = text;
+        }
+
+        function tileForParticipant(identity) {
+            let tile = document.getElementById("tile-" + identity);
+            if (!tile) {
+                tile = document.createElement("div");
+                tile.id = "tile-" + identity;
+                tile.className = "tile";
+                const label = document.createElement("div");
+                label.className = "label";
+                label.textContent = identity;
+                tile.appendChild(label);
+                document.getElementById("grid").appendChild(tile);
+            }
+            return tile;
+        }
+
+        function attachTrack(participant, track) {
+            const tile = tileForParticipant(participant.identity);
+            const element = track.attach();
+            element.setAttribute("playsinline", "");
+            if (track.kind === "video") {
+                // remove any prior video, keep label
+                const existingVideo = tile.querySelector("video");
+                if (existingVideo) existingVideo.remove();
+                tile.insertBefore(element, tile.firstChild);
+            } else {
+                element.style.display = "none";
+                tile.appendChild(element);
+            }
+            tiles.set(track.sid, { element, tile });
+        }
+
+        function detachTrack(track) {
+            const entry = tiles.get(track.sid);
+            if (!entry) return;
+            track.detach(entry.element);
+            entry.element.remove();
+            tiles.delete(track.sid);
+        }
+
+        function removeTile(identity) {
+            const tile = document.getElementById("tile-" + identity);
+            if (tile) tile.remove();
+        }
+
+        window.startStream = async function (config) {
+            if (room) {
+                console.warn("Already connected");
+                return;
+            }
+            const { url, token } = config;
+            setStatus("Connecting...");
+
+            const Lk = window.LivekitClient;
+            room = new Lk.Room({ adaptiveStream: true, dynacast: true });
+
+            room.on(Lk.RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+                attachTrack(participant, track);
+            });
+            room.on(Lk.RoomEvent.TrackUnsubscribed, (track) => {
+                detachTrack(track);
+            });
+            room.on(Lk.RoomEvent.ParticipantDisconnected, (participant) => {
+                removeTile(participant.identity);
+            });
+            room.on(Lk.RoomEvent.Disconnected, () => {
+                setStatus("Disconnected");
+                postMessage({ type: "disconnected" });
+            });
+
+            try {
+                await room.connect(url, token);
+                setStatus("Connected");
+                postMessage({ type: "connected" });
+
+                await room.localParticipant.enableCameraAndMicrophone();
+                const localVideo = room.localParticipant.getTrackPublication(Lk.Track.Source.Camera);
+                if (localVideo && localVideo.track) {
+                    attachTrack(room.localParticipant, localVideo.track);
+                }
+            } catch (err) {
+                setStatus("Error: " + err.message);
+                postMessage({ type: "error", message: err.message });
+                room = null;
+            }
+        };
+
+        window.stopStream = async function () {
+            if (!room) return;
+            try {
+                await room.disconnect();
+            } catch (e) { /* ignore */ }
+            room = null;
+            document.getElementById("grid").innerHTML = "";
+            tiles.clear();
+            setStatus("Idle");
+        };
+    </script>
+</body>
+</html>

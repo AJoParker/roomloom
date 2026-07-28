@@ -63,6 +63,9 @@
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+
+		<!-- HybridWebView root for the LiveKit streaming page -->
+		<MauiAsset Include="Resources\HybridRoot\**" LogicalName="HybridRoot/%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
 	<ItemGroup>

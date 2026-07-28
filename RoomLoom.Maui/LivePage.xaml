@@ -40,10 +40,12 @@
             </Label>
         </HorizontalStackLayout>
 
-        <Button Grid.Row="3"
-                Text="Go Live"
-                Command="{Binding GoLiveCommand}"
-                HorizontalOptions="Start" />
+        <HorizontalStackLayout Grid.Row="3" Spacing="10">
+            <Button Text="Go Live"
+                    Command="{Binding GoLiveCommand}" />
+            <Button Text="Join Video"
+                    Command="{Binding JoinVideoCommand}" />
+        </HorizontalStackLayout>
 
         <Grid Grid.Row="4">
 

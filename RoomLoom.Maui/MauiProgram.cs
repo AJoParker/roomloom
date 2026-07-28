@@ -25,10 +25,12 @@ public static class MauiProgram
 		builder.Services.AddTransient<ConnectionViewModel>();
 		builder.Services.AddTransient<SessionsViewModel>();
 		builder.Services.AddTransient<LiveSessionViewModel>();
+		builder.Services.AddTransient<StreamViewModel>();
 
 		builder.Services.AddTransient<MainPage>();
 		builder.Services.AddTransient<SessionsPage>();
 		builder.Services.AddTransient<LivePage>();
+		builder.Services.AddTransient<StreamPage>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

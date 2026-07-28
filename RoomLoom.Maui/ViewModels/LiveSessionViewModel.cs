@@ -28,6 +28,10 @@ public partial class LiveSessionViewModel : BaseViewModel, IDisposable
     [ObservableProperty]
     private ObservableCollection<Participant> _participants = new();
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(JoinVideoCommand))]
+    private LiveSession? _liveSession;
+
     public LiveSessionViewModel(ISessionConnection connection, IHttpClientFactory httpFactory, IUserIdentity identity)
     {
         _connection = connection;
@@ -144,6 +148,7 @@ public partial class LiveSessionViewModel : BaseViewModel, IDisposable
     private void OnSessionLive(object? sender, LiveSession live) =>
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            LiveSession = live;
             LifecycleText = $"Live (room {live.MediaRoomId})";
             Lifecycle = LifecycleBadge.Live;
         });
@@ -151,9 +156,19 @@ public partial class LiveSessionViewModel : BaseViewModel, IDisposable
     private void OnSessionEnded(object? sender, LiveSession live) =>
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            LiveSession = null;
             LifecycleText = "Ended";
             Lifecycle = LifecycleBadge.Ended;
         });
+
+    [RelayCommand(CanExecute = nameof(CanJoinVideo))]
+    private async Task JoinVideoAsync()
+    {
+        if (LiveSession is null) return;
+        await Shell.Current.GoToAsync($"StreamPage?liveSessionId={Uri.EscapeDataString(LiveSession.Id)}");
+    }
+
+    private bool CanJoinVideo() => LiveSession is not null;
 
     public void Dispose() => Unsubscribe();
 }

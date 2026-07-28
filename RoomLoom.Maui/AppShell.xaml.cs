@@ -6,5 +6,6 @@ public partial class AppShell : Shell
 	{
 		InitializeComponent();
 		Routing.RegisterRoute(nameof(LivePage), typeof(LivePage));
+		Routing.RegisterRoute(nameof(StreamPage), typeof(StreamPage));
 	}
 }
