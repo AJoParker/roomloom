@@ -51,11 +51,13 @@ builder.Services.AddSingleton<ISessionNotifier, SignalRSessionNotifier>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 
 builder.Services.AddProblemDetails();
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseStaticFiles();
 
 if (app.Environment.IsDevelopment())
 {
@@ -118,6 +120,8 @@ app.MapPost("/live-sessions/{id}/end", async (string id, ISessionService session
 });
 
 app.MapHub<SessionHub>("/hubs/session");
+
+app.MapRazorPages();
 
 app.UseHttpsRedirection();
 

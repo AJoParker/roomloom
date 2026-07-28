@@ -66,3 +66,7 @@ appsettings.*.Local.json
 # Logs
 *.log
 logs/
+
+# Frontend (built in CI; never committed)
+node_modules/
+RoomLoom.Api/wwwroot/js/room/

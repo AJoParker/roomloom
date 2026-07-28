@@ -1,0 +1,48 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: roomloom # set to the actual App Service name
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: RoomLoom.Api/ClientApp/package-lock.json
+
+      # Node steps run before dotnet publish so the built island is
+      # inside wwwroot when publish collects static assets.
+      - name: Build React island
+        working-directory: RoomLoom.Api/ClientApp
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Project paths only. Never the solution: RoomLoom.Maui cannot
+      # build on a Linux runner (no MAUI workloads) and is frozen anyway.
+      - name: Test
+        run: dotnet test tests/RoomLoom.Api.Tests/RoomLoom.Api.Tests.csproj --nologo
+
+      - name: Publish
+        run: dotnet publish RoomLoom.Api/RoomLoom.Api.csproj -c Release -o site
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: site
