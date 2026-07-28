@@ -1,5 +1,7 @@
 # LIVEKIT-DOTNET-DESKTOP.md — Native LiveKit Client for .NET Desktop (Catalyst + Windows)
 
+**FROZEN until after August 4, 2026.** `SCOPE.md` governs; this is explicitly named there as the likeliest way the ship date dies. Unfreezes after ship.
+
 Plan for building a native (non-WebView) LiveKit client for .NET MAUI on desktop, by binding LiveKit's Rust FFI layer. This is a SEPARATE project from RoomLoom. RoomLoom ships with the WebView + LiveKit JS approach and stays that way; this project is the deeper specialization.
 
 ## Phase 0 outcome — OUTCOME A (2026-07-02)
@@ -123,4 +125,4 @@ Cross-compile livekit-ffi for aarch64-apple-ios / aarch64-linux-android, mobile 
 - Prefer contributing capture/render work upstream to Livekit.Rtc.Dotnet over forking, where the maintainer is receptive.
 - No em dashes in generated prose/docs.
 - This is an active portfolio project running alongside the job search. Every phase boundary is a shippable, demoable state. If the project must pause (interviews, RoomLoom work, life), stop AT a phase boundary with a green commit, never mid-phase. A finished Phase N beats a half-done Phase N+1.
-- Prerequisite: RoomLoom Phase 4 (two-way streaming proof) should be finished and committed before this repo opens, so the portfolio always contains at least one complete project.
+- Prerequisite: shipped RoomLoom (the August 4, 2026 ship per `SCOPE.md`) before this repo opens, so the portfolio always contains at least one complete project.
