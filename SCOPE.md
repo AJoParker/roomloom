@@ -4,6 +4,8 @@ Ship date: **Tuesday, August 4, 2026.** The date does not move. Scope moves.
 
 Reopening scope requires visibly editing this file in a tracked commit.
 
+**Scope change, July 29, 2026:** no Azure deployment. RoomLoom is hosted locally (docker-compose for SQL Server and the LiveKit dev server, `dotnet run` for the app). The demo artifact is the screen capture plus the public repo, not a live URL. GitHub Actions remains as CI (build and tests), not CD.
+
 ## The acceptance test
 
 > RoomLoom lets a signed-in user create a session, share a link, and have a second
@@ -17,9 +19,9 @@ Anything that does not serve that sentence is out.
 2. `IMediaProvider` port with `LiveKitMediaProvider` and `FakeMediaProvider`.
 3. Session lifecycle: create, list, join, end. No edit, no delete, no recurrence.
 4. SignalR hub doing one thing: participant joined, participant left, roster broadcast.
-5. EF Core against Azure SQL. Sessions and Participants. Migrations committed.
+5. EF Core against SQL Server 2022 in Docker (local). Sessions and Participants. Migrations committed.
 6. Auth: Google sign-in only. No roles, no profile page.
-7. Deployed to Azure App Service from GitHub Actions.
+7. Runs locally: docker-compose brings up SQL Server and the LiveKit dev server; `dotnet run` serves the app. GitHub Actions runs build and tests as CI. No cloud deployment.
 8. README with a 30-second screen capture at the top.
 
 ## Out
@@ -34,7 +36,7 @@ Do not propose these. Flag it if I start drifting toward them.
 - Test breadth. Domain-layer tests against the fakes only. Zero new integration tests, zero UI tests. Existing tests stay.
 - Timezone handling beyond UTC storage and browser-local rendering.
 - Notifications, email, invites, calendar write-back, ICS export.
-- Observability. App Service default logging only. No App Insights, no OpenTelemetry.
+- Observability. Console logging only. No App Insights, no OpenTelemetry.
 - Polish outside the join flow. No dark mode, no responsive tuning past "does not break on a laptop," no skeletons, no empty-state illustrations.
 - Infrastructure as code. Click it out in the portal.
 
@@ -42,7 +44,7 @@ Do not propose these. Flag it if I start drifting toward them.
 
 Mechanical, not judgment calls.
 
-- **Media, end of Saturday 8/1.** If video is not working, clear `LiveKit:Url` in App Service settings (an empty value falls back to `FakeMediaProvider`; that is the actual switch on disk, there is no `Media:Provider` key), add one README line explaining the port and why the adapter is stubbed, and move on. The roster syncing already proves the real-time story. Do not spend Sunday on WebRTC.
+- **Media, end of Saturday 8/1.** If video is not working, clear `LiveKit:Url` from user-secrets (an empty value falls back to `FakeMediaProvider`; that is the actual switch on disk, there is no `Media:Provider` key), add one README line explaining the port and why the adapter is stubbed, and move on. The roster syncing already proves the real-time story. Do not spend Sunday on WebRTC.
 - **Google auth and calendar, mid-afternoon Sunday 8/2.** If sign-in is not working, cut `GoogleCalendarAdapter` entirely. The InMemory and EF adapters already prove the port. Do not let the last build day become an OAuth debugging session.
 - **Any day, any task.** If a task is not done by the end of its assigned day, it moves to Out. It does not eat the next day.
 
@@ -55,11 +57,10 @@ Do not reopen without a specific new fact. If one is challenged, say so directly
 | Razor Pages + a React island, not Blazor | LiveKit's prebuilt UI is React-only. Blazor Server would mean JS interop on top of a framework already using SignalR. Also differentiates RoomLoom from Fulcrum in the portfolio. |
 | React scoped to a single `#livekit-root` div | Rest of the page stays server-rendered. SignalR roster is plain JS outside the island. No shared state across the boundary. |
 | `<VideoConference />` used as shipped | Replacing it with individual components to customize layout is where the schedule dies. |
-| **Token minting keeps `Livekit.Server.Sdk.Dotnet` 1.2.2** | Reversal of the earlier "hand-roll the JWT" decision. The SDK path is already implemented, already covered by a unit test that decodes the JWT and asserts identity and grants, plus two endpoint tests. Rewriting working tested code to drop a dependency is scope addition. Hand-roll only if the SDK actually fails against LiveKit Cloud. |
+| **Token minting keeps `Livekit.Server.Sdk.Dotnet` 1.2.2** | Reversal of the earlier "hand-roll the JWT" decision. The SDK path is already implemented, already covered by a unit test that decodes the JWT and asserts identity and grants, plus two endpoint tests. Rewriting working tested code to drop a dependency is scope addition. Hand-roll only if the SDK actually fails against the LiveKit server. |
 | Token minting lives behind `IMediaProvider` in Infrastructure | Core knows nothing about JWTs or WebRTC. This is the architectural seam the project demonstrates. |
 | Room name derived as `session-{sessionId}` | No rooms table. Two people on the same session id land in the same room. |
-| App Service **B1 Linux**, not F1 | Free tier does not support WebSockets, which SignalR needs. Web sockets must also be explicitly set to On in General settings. |
-| Azure SQL serverless, auto-pause disabled during the demo window | A cold start makes the live link look broken to a hiring manager. Re-enable after the demo window; set a reminder. |
+| **Local hosting, not Azure** (July 29 supersession of the B1 App Service and Azure SQL serverless decisions) | No cloud spend, no deploy pipeline risk, no cold-start worries. The portfolio artifact is the screen capture plus the public repo. SQL Server 2022 and the LiveKit dev server both run in the existing docker-compose; the app runs via `dotnet run`. |
 | Google OAuth consent screen stays in Testing mode | Publishing triggers a verification review that takes weeks. |
 | Vite build wiring done up front, not mid-week | Bolting a build pipeline onto a working app later is the classic schedule killer. |
 
