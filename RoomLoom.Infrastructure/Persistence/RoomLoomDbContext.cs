@@ -39,6 +39,9 @@ public class RoomLoomDbContext : DbContext
                    .HasConversion<string>()
                    .HasMaxLength(20);
 
+            session.Property(s => s.OwnerId)
+                   .HasMaxLength(128);
+
             session.HasOne(s => s.Host)
                    .WithMany()
                    .HasForeignKey("HostId")
