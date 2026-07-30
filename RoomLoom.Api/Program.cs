@@ -28,12 +28,15 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<RoomLoomDbContext>(options =>
         options.UseSqlServer(connectionString));
+    builder.Services.AddScoped<ISchedulingProvider, EfSchedulingProvider>();
     builder.Services.Configure<SessionExpiryOptions>(
         builder.Configuration.GetSection("SessionExpiry"));
     builder.Services.AddHostedService<SessionExpiryService>();
 }
-
-builder.Services.AddScoped<ISchedulingProvider, InMemorySchedulingProvider>();
+else
+{
+    builder.Services.AddScoped<ISchedulingProvider, InMemorySchedulingProvider>();
+}
 
 var liveKitSection = builder.Configuration.GetSection("LiveKit");
 builder.Services.Configure<LiveKitOptions>(liveKitSection);

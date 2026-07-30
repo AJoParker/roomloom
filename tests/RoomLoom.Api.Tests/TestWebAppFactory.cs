@@ -13,6 +13,11 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Tests always run the no-DB path (InMemory provider). Without this,
+        // developer user-secrets leak a real connection string into the test
+        // host and swap in the EF provider.
+        builder.UseSetting("ConnectionStrings:RoomLoomDb", "");
+
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IMediaProvider>();
