@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RoomLoom.Api.BackgroundServices;
+using RoomLoom.Api.Contracts;
 using RoomLoom.Api.Hubs;
 using RoomLoom.Api.Notifications;
 using RoomLoom.Api.Services;
@@ -74,6 +75,26 @@ app.MapGet("/sessions", async (
 {
     var sessions = await scheduling.GetUpcomingSessionsAsync(userId ?? "dev-user", ct);
     return Results.Ok(sessions);
+});
+
+app.MapPost("/sessions", async (
+    CreateSessionRequest request,
+    ISchedulingProvider scheduling,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Title))
+        return Results.BadRequest(new { error = "Title is required." });
+
+    var session = new ScheduledSession
+    {
+        Title = request.Title.Trim(),
+        StartTime = request.StartTime,
+        // No end-time field in the create flow; one hour is the default.
+        EndTime = request.StartTime.AddHours(1),
+    };
+
+    var id = await scheduling.CreateSessionAsync(session, ct);
+    return Results.Created($"/room/{id}", new { id });
 });
 
 app.MapPost("/sessions/{id}/go-live", async (string id, ISessionService sessions, CancellationToken ct) =>
