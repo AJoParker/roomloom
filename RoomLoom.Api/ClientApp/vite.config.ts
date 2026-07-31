@@ -9,10 +9,13 @@ export default defineConfig({
     outDir: "../wwwroot/js/room",
     emptyOutDir: true,
     rollupOptions: {
-      input: "src/room.tsx",
+      input: {
+        room: "src/room.tsx",
+        roster: "src/roster.ts",
+      },
       output: {
-        entryFileNames: "room.js",
-        assetFileNames: "room.[ext]",
+        entryFileNames: "[name].js",
+        assetFileNames: "[name].[ext]",
       },
     },
   },

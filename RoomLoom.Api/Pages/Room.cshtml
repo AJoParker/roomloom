@@ -1,0 +1,34 @@
+@page "/room/{id}"
+@model RoomLoom.Api.Pages.RoomModel
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Model.Session.Title — RoomLoom</title>
+</head>
+<body>
+    <div id="room-wrapper" data-session-id="@Model.Session.Id">
+        <h1>@Model.Session.Title</h1>
+        <p>
+            @Model.Session.StartTime.ToLocalTime().ToString("g")
+            – @Model.Session.EndTime.ToLocalTime().ToString("t")
+            (@Model.Session.PlannedStatus)
+        </p>
+
+        <div>
+            <input id="display-name" type="text" placeholder="Your name" />
+            <button id="join-btn" type="button">Join</button>
+            <span id="roster-status"></span>
+        </div>
+
+        <h2>In this room</h2>
+        <ul id="roster"></ul>
+
+        <div id="livekit-root"></div>
+    </div>
+
+    <script type="module" src="/js/room/roster.js"></script>
+    <script type="module" src="/js/room/room.js"></script>
+</body>
+</html>

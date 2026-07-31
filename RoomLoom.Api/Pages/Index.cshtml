@@ -1,15 +1,32 @@
 @page
+@model RoomLoom.Api.Pages.IndexModel
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>RoomLoom</title>
+    <title>RoomLoom — Sessions</title>
 </head>
 <body>
     <h1>RoomLoom</h1>
-    <p>Deploy scaffold. Sessions UI lands Thursday.</p>
-    <div id="livekit-root"></div>
-    <script type="module" src="/js/room/room.js"></script>
+
+    <h2>Upcoming sessions</h2>
+    @if (Model.Sessions.Count == 0)
+    {
+        <p>No upcoming sessions.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var s in Model.Sessions)
+            {
+                <li>
+                    <a href="/room/@s.Id">@s.Title</a>
+                    — @s.StartTime.ToLocalTime().ToString("g")
+                    (@s.PlannedStatus)
+                </li>
+            }
+        </ul>
+    }
 </body>
 </html>
